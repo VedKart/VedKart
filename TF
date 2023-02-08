@@ -1,0 +1,33 @@
+import tensorflow as tf
+import tensorflow_quantum as tfq
+
+# Define the number of qubits in the circuit.
+num_qubits = 4
+
+# Create the input layer with the specified number of qubits.
+input_layer = tfq.layers.QuantumLayer(num_qubits, wire_bounds='input')
+
+# Create the quantum circuit layer using a combination of quantum gates.
+quantum_layer = tfq.layers.ControlledX(input_layer, control=0, target=1)
+quantum_layer = tfq.layers.ControlledX(quantum_layer, control=2, target=3)
+quantum_layer = tfq.layers.ControlledZ(quantum_layer, control=0, target=2)
+
+# Create the classical layer for post-processing the quantum output.
+classical_layer = tf.keras.layers.Dense(1, activation='linear')
+
+# Combine the quantum and classical layers into a single model.
+model = tf.keras.Sequential([input_layer, quantum_layer, classical_layer])
+
+# Compile the model with a mean squared error loss function.
+model.compile(optimizer=tf.optimizers.Adam(), loss=tf.losses.MeanSquaredError())
+
+# Generate random classical data for training the model.
+num_training_examples = 1000
+input_data = tf.random.normal([num_training_examples, num_qubits])
+
+# Use the simulator to calculate the target data.
+simulator = tfq.get_backend('qsim')
+target_data = simulator.expectation(quantum_layer, input_data)
+
+# Train the model on the classical data and target data.
+model.fit(input_data, target_data, epochs=10)
